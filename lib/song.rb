@@ -1,30 +1,33 @@
 require_relative "../config/environment.rb"
-require 'active_support/inflector'
+require 'active_support/inflector' # need this for pluralize method
 
 class Song
 
-
+  # use this to get column names from table dynamically
+  # takes name of class referenced as self, turn it to string, downcase and make it plural
   def self.table_name
     self.to_s.downcase.pluralize
   end
 
   def self.column_names
-    DB[:conn].results_as_hash = true
+    DB[:conn].results_as_hash = true # db row returned as hash
 
-    sql = "pragma table_info('#{table_name}')"
+    sql = "pragma table_info('#{table_name}')" # pragma table_info returns one row for each column in the table
 
     table_info = DB[:conn].execute(sql)
     column_names = []
     table_info.each do |row|
       column_names << row["name"]
     end
-    column_names.compact
+    column_names.compact # compact gets rid of nil values and returns ["id", "name", "album"]
   end
 
+  # iterate thru column_names ["id", "name", "album"]
   self.column_names.each do |col_name|
-    attr_accessor col_name.to_sym
+    attr_accessor col_name.to_sym # convert column name string to symbol
   end
 
+  # takes in argument of options which is empty hash
   def initialize(options={})
     options.each do |property, value|
       self.send("#{property}=", value)
@@ -37,10 +40,13 @@ class Song
     @id = DB[:conn].execute("SELECT last_insert_rowid() FROM #{table_name_for_insert}")[0][0]
   end
 
+  # this is an instance method, therefore it's self.class
   def table_name_for_insert
     self.class.table_name
   end
 
+  # send method allows us to invoke a method without knowing the exact name of the method
+  # "'#{send(col_name)}'" this invokes the method which returns the value
   def values_for_insert
     values = []
     self.class.column_names.each do |col_name|
@@ -49,6 +55,7 @@ class Song
     values.join(", ")
   end
 
+  #removes the id column since db automatically increments id for us. then we join so it's comma separated
   def col_names_for_insert
     self.class.column_names.delete_if {|col| col == "id"}.join(", ")
   end
